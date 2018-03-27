@@ -13,6 +13,9 @@ stack-up.sh)
 publish.sh)
   COMMAND="$CIM lambda-publish $ALL_PARAMS ${@:2}"
   ;;
+deploy.sh)
+  COMMAND="$CIM lambda-deploy $ALL_PARAMS ${@:2}"
+  ;;
 esac
 echo "Executing: $COMMAND"
 $COMMAND
