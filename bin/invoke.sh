@@ -10,7 +10,7 @@ if [ ! -f $FUNCROOT/index.js ]; then
   exit 1
 fi
 STDPARAMS="-v $FUNCROOT -t sam/template.yaml --profile=$PROFILE"
-COMMAND="sam local invoke $FUNC -v $FUNCROOT $STDPARAMS ${@:2}"
+COMMAND="sam local invoke $FUNC -v $FUNCROOT $STDPARAMS ${@:2} --parameter-values CodeUri=$FUNCROOT"
 COMMAND="sam local start-api $STDPARAMS ${@:2}"
 echo "Executing: $COMMAND"
 $COMMAND

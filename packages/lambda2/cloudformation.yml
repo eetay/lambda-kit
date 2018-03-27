@@ -77,7 +77,8 @@ Resources:
       Runtime: nodejs6.10
       Environment:
         Variables:
-          MY_NAME: 1234
+          LAMBDA1:
+            Fn::ImportValue: lambda1-LambdaFunction
 
   #
   # Version 1 of our function.

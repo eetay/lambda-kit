@@ -1,14 +1,25 @@
 'use strict';
 var AWS_REGION = process.env.AWS_REGION;
-var MY_NAME = process.env.MY_NAME;
+var LAMBDA1 = process.env.LAMBDA1;
 console.log('#### region=', AWS_REGION);
-console.log('#### name=', MY_NAME);
+console.log('#### lambda1=', LAMBDA1);
+
+var aws = require('aws-sdk');
+var cloudformation = new aws.CloudFormation();
+
+var params = {
+  LogicalResourceId: 'LambdaFunction', /* required */
+  StackName: 'lambda1' /* required */
+};
+cloudformation.describeStackResource(params, function(err, data) {
+  if (err) console.log(err, err.stack); // an error occurred
+  else     console.log('########',data);           // successful response
+});
 
 exports.handler = function(event, context, callback) {
-  var aws = require('aws-sdk');
   var lambda = new aws.Lambda({region: AWS_REGION});
   lambda.invoke({
-    FunctionName: 'arn:aws:lambda:us-east-1:632658757968:function:lambda1-LambdaFunction-1QYMPRSED6C6I',
+    FunctionName: 'arn:aws:lambda:us-east-1:632658757968:function:lambda1-LambdaFunction-1X15BVMX6VCDQ',
     Payload: JSON.stringify(event, null, 2)
     //InvocationType: 'Event'
   }, function(error, data) {
