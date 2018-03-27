@@ -1,1 +1,0 @@
-AWS_REGION=us-east-1 ../cim/bin/cim lambda-publish --dir=packages/lambda2 --profile=samanage-sandbox
