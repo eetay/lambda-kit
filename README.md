@@ -1,4 +1,7 @@
 # lambda-kit
+a startup repo for AWS lambda development and deployment 
+
+
 
 ```./bin/invoke.sh lambda2 -e sam/event.json```
 
