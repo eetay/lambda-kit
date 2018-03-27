@@ -1,4 +1,4 @@
-#lambda-kit
+# lambda-kit
 
 ```./bin/invoke.sh lambda2 -e sam/event.json```
 
