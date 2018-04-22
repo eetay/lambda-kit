@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-
+Transform: "AWS::Serverless-2016-10-31"
 #
 # CloudFormation input parameters
 #
@@ -56,7 +56,7 @@ Resources:
   # Our Lambda function.
   #
   LambdaFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
       Handler: index.handler
       Timeout: 5

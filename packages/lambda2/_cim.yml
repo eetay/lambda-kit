@@ -41,11 +41,9 @@ lambda:
       pre_deploy:
         commands:
           # Install all npm packages including dev packages.
-          # npm install
           # - yarn
 
           # Run the tests
-          # npm test
           # - yarn test
 
           # Remove all the npm packages.
@@ -53,7 +51,6 @@ lambda:
           - mv node_modules node_modules.dev
 
           # Only install the non-dev npm packages.  We don't want to bloat our Lambda with dev packages.
-          # npm install --production
           - yarn install --production=true
 
           # Zip the Lambda for upload to S3.

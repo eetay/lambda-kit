@@ -1,6 +1,6 @@
 version: 0.1
 stack:
-  name: lambda1 # Note: Update this with your stack name
+  name: ThrottledApiProxyStack # Note: Update this with your stack name
   template:
     file: cloudformation.yml
     bucket: samanage-sandbox-cim-artifacts # Note: Update this with your bucket name.  Stacks are uploaded here prior to deployment.'
@@ -8,7 +8,7 @@ stack:
 #
 # Reference parent stacks fo included shared information like stack name.
 #
-#  parents:
+  parents:
 #    vpc: '../vpc'
 
 #
@@ -41,19 +41,16 @@ lambda:
       pre_deploy:
         commands:
           # Install all npm packages including dev packages.
-          # npm install
           # - yarn
 
           # Run the tests
-          # npm test
           # - yarn test
 
           # Remove all the npm packages.
           - rm -rf node_modules.dev
-          - mv node_modules node_modules.dev
+          - mv node_modules node_modules.dev || mkdir node_modules.dev
 
           # Only install the non-dev npm packages.  We don't want to bloat our Lambda with dev packages.
-          # npm install --production
           - yarn install --production=true
 
           # Zip the Lambda for upload to S3.

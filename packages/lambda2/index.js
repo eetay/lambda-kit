@@ -1,8 +1,9 @@
 'use strict';
+//throw new Error('xxxx');
 var AWS_REGION = process.env.AWS_REGION;
 var LAMBDA1 = process.env.LAMBDA1;
 console.log('#### region=', AWS_REGION);
-console.log('#### lambda1=', LAMBDA1);
+console.log('#### Xlambda1=', LAMBDA1);
 
 var aws = require('aws-sdk');
 var cloudformation = new aws.CloudFormation();

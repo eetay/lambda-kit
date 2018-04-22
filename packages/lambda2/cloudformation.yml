@@ -32,6 +32,14 @@ Resources:
       Path: '/'
 
   #
+  # Our Lambda function's DLQ
+  #
+  DeadLetterQ:
+    Type: "AWS::SQS::Queue"
+    Properties:
+      QueueName: "LambdaFunctionDLQ"
+
+  #
   # Create a Policy and attach it to our Lambda Role.
   #
   IamPolicyLambdaExecution:
@@ -41,6 +49,13 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+          Resource:
+            Fn::GetAtt:
+              - DeadLetterQ
+              - Arn
         - Effect: Allow
           Action:
             - logs:CreateLogGroup
@@ -75,6 +90,11 @@ Resources:
               context.succeed('Hello CIM!');
           };
       Runtime: nodejs6.10
+      DeadLetterConfig:
+        TargetArn:
+          Fn::GetAtt:
+            - DeadLetterQ
+            - Arn
       Environment:
         Variables:
           LAMBDA1:
@@ -107,3 +127,7 @@ Outputs:
     Value: !Ref LambdaFunction
     Export:
       Name: !Sub '${AWS::StackName}-LambdaFunction'
+  DeadLetterQueueURL:
+    Description: "URL of newly created DLQ"
+    Value: !Ref DeadLetterQ
+
