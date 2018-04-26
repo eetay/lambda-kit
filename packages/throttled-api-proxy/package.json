@@ -7,7 +7,7 @@
     "test": "mocha"
   },
   "dependencies": {
-    "winston": "^2.3.1"
+    "jsonwebtoken": "^7.4.1"
   },
   "devDependencies": {
     "aws-sdk": "^2.110.0",

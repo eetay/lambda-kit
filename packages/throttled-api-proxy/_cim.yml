@@ -47,18 +47,19 @@ lambda:
           # - yarn test
 
           # Remove all the npm packages.
+          - mkdir -p dist/node_modules ./node_modules
           - rm -rf node_modules.dev
-          - mv node_modules node_modules.dev || mkdir node_modules.dev
+          - mv node_modules node_modules.dev
+          - mv dist/node_modules .
 
           # Only install the non-dev npm packages.  We don't want to bloat our Lambda with dev packages.
           - yarn install --production=true
 
           # Zip the Lambda for upload to S3.
-          - zip -r index.zip index.js node_modules
+          - zip -r index.zip index.js src node_modules
       post_deploy:
         commands:
           # Archive artifacts to dist
-          - mkdir -p dist
           - mv -f index.zip dist
           - mv node_modules dist
 

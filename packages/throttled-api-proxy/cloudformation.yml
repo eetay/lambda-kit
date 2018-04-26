@@ -26,21 +26,58 @@ Conditions:
 Resources:
 
   #
-  # Role that our Lambda will assume to provide access to other AWS resources
+  # Role that our API Gateway will assume to write logs
+  #
+  ApiGatewayExecuteAuthorizerRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - "apigateway.amazonaws.com"
+          Action:
+          - "sts:AssumeRole"
+      Path: "/"
+
+  #
+  # Create a Policy and attach it to ApiGatewayCloudWatchRole
+  #
+  IamPolicyExecuteAuthorizer:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: IamPolicyExecuteAuthorizer
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - lambda:InvokeFunction
+          Resource: "*"
+      Roles:
+      - Ref: ApiGatewayExecuteAuthorizerRole
+
+
+
+  #
+  # Role that our API Gateway will assume to write logs
   #
   ApiGatewayCloudWatchRole:
     Type: "AWS::IAM::Role"
     Properties:
-     AssumeRolePolicyDocument:
-      Version: "2012-10-17"
-      Statement:
-       - Effect: Allow
-         Principal:
-          Service:
-           - "apigateway.amazonaws.com"
-         Action: "sts:AssumeRole"
-     Path: "/"
-     ManagedPolicyArns:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - "apigateway.amazonaws.com"
+          Action:
+          - "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
       - "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
 
   #
@@ -55,18 +92,18 @@ Resources:
         Statement:
         - Effect: Allow
           Action:
-            - logs:CreateLogGroup
-            - logs:CreateLogStream
+          - logs:CreateLogGroup
+          - logs:CreateLogStream
           Resource: arn:aws:logs:us-east-1:*:*
         - Effect: Allow
           Action:
-            - logs:PutLogEvents
+          - logs:PutLogEvents
           Resource: arn:aws:logs:us-east-1:*:*
           Resource: '*'
       Roles:
       - Ref: ApiGatewayCloudWatchRole
 
-  #
+  
   #
   # Role that our Lambda will assume to provide access to other AWS resources
   #
@@ -76,12 +113,12 @@ Resources:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
       Path: '/'
 
   #
@@ -96,12 +133,12 @@ Resources:
         Statement:
         - Effect: Allow
           Action:
-            - logs:CreateLogGroup
-            - logs:CreateLogStream
+          - logs:CreateLogGroup
+          - logs:CreateLogStream
           Resource: arn:aws:logs:us-east-1:*:*
         - Effect: Allow
           Action:
-            - logs:PutLogEvents
+          - logs:PutLogEvents
           Resource: arn:aws:logs:us-east-1:*:*
           Resource: '*'
       Roles:
@@ -143,15 +180,15 @@ Resources:
     Type: AWS::ApiGateway::RestApi
     Properties:
       Name: ApiGatewayRestApi
-      ApiKeySourceType: HEADER
-      Description: "La La La"
+      ApiKeySourceType: AUTHORIZER
+      Description: "Throttling AWS demo 'Pets Store' using Authorizer"
 
   Authorizer:
     Type: "AWS::ApiGateway::Authorizer"
     Properties:
       AuthorizerCredentials:
         Fn::GetAtt:
-          - "IamRoleLambdaExecution"
+          - "ApiGatewayExecuteAuthorizerRole"
           - "Arn"
       AuthorizerResultTtlInSeconds: "300"
       AuthorizerUri:
@@ -166,7 +203,7 @@ Resources:
                 - "Arn"
             - "/invocations"
       Type: "TOKEN"
-      IdentitySource: "method.request.header.Auth"
+      IdentitySource: "method.request.header.X-Samanage-Authorization"
       Name: "DefaultAuthorizer"
       RestApiId:
         Ref: "RestApi"
