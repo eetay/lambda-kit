@@ -8,7 +8,7 @@ if [ -z "$FUNC" ]; then
   echo "Usage: $SCRIPT <lambda-name> "
   exit 1
 fi
-#LOG_PARAMS="--log-file ./output.log"
+LOG_PARAMS="--log-file ./output.log"
 FUNCROOT=packages/$FUNC
 yarn --cwd $FUNCROOT
 if [ ! -f $FUNCROOT/index.js ]; then
@@ -22,7 +22,7 @@ start-api.sh)
   COMMAND="sam local start-api $STDPARAMS ${@:2}"
   ;;
 *)
-  COMMAND="sam local invoke $FUNC -v $FUNCROOT $STDPARAMS ${@:2} --parameter-values CodeUri=$FUNCROOT"
+  COMMAND="sam local invoke lambda2 -v $FUNCROOT $STDPARAMS ${@:2} --parameter-values CodeUri=$FUNCROOT"
   ;;
 esac
 

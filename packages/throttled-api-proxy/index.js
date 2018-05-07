@@ -7,8 +7,9 @@
 *
 * or in the "license" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 */
-console.log('Loading new function');
+console.log('Loading extra new function');
 var AuthPolicy = require('./src/AuthPolicy.js');
+var jwt = require('jsonwebtoken');
 
 /* Output from an Amazon API Gateway Lambda Authorizer
 https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-lambda-authorizer-output.html
@@ -40,19 +41,40 @@ const KEYS=[
 
 const EETAY_USER_ID = '410895836b87a5d6d9e9d35daad82f09d670525333562b85aeb5abbc9335dba9';
 
+function decodeAuthToken(token, success, failure) {
+  try {
+    // token format is "Bearer <something>:<jwt>"
+    jwt_info = jwt.decode(token.split(':')[1]) // unverified info (we don't have the secret)
+    console.log('decoded api gateway authz info: ', jwt_info.api_key_name, jwt_info.api_key_authz)
+    success(jwt_info.api_key_authz);
+    /*
+    apiGateway.getApiKeys(
+      {nameQuery: jwt_info.api_key_name, includeValues: true},
+      function(err, data) {
+        if (err) {
+          console.log(err, err.stack); // an error occurred
+          failure(err);
+        }
+        else {
+          console.log(data.items[0].value);
+          success(data.items[0].value);
+        }
+      }
+    );
+    */
+  }
+  catch (e) {
+    console.log('decodeAuthToken', e);
+    failure(e);
+  }
+}
+
+console.log('Loading extra new function');
+
 exports.handler = function(event, context, callback) {
     console.log('Event: ' + JSON.stringify(event));
     console.log('Client token: ' + event.authorizationToken);
     console.log('Method ARN: ' + event.methodArn);
-
-    // validate the incoming token
-    // and produce the principal user identifier associated with the token
-
-    // this could be accomplished in a number of ways:
-    // 1. Call out to OAuth provider
-    // 2. Decode a JWT token inline
-    // 3. Lookup in a self-managed DB
-    var principalId = 'user|'+ EETAY_USER_ID;
 
     // you can send a 401 Unauthorized response to the client by failing like so:
     // callback("Unauthorized", null);
@@ -61,6 +83,8 @@ exports.handler = function(event, context, callback) {
 
     // if access is denied, the client will receive a 403 Access Denied response
     // if access is allowed, API Gateway will proceed with the backend integration configured on the method that was called
+
+    var principalId = 'user|'+ EETAY_USER_ID;
 
     // build apiOptions for the AuthPolicy
     var apiOptions = {};
@@ -99,10 +123,18 @@ exports.handler = function(event, context, callback) {
         number : 1,
         bool: true
     };
-    authResponse.usageIdentifierKey = KEYS[0];
     // authResponse.context.arr = ['foo']; <- this is invalid, APIGW will not accept it
     // authResponse.context.obj = {'foo':'bar'}; <- also invalid
-
-    console.log('Response: ' + JSON.stringify(authResponse));
-    callback(null, authResponse);
+    
+    decodeAuthToken(
+      event.authorizationToken, 
+      function(key) {
+        authResponse.usageIdentifierKey = key;
+        console.log('Responding with: ' + JSON.stringify(authResponse));
+        callback(null, authResponse);
+      }, 
+      function (err) {
+        callback("Unauthorized", null);
+      }
+    );
 };

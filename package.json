@@ -2,7 +2,7 @@
   "private": true,
   "devDependencies": {
     "cim": "^0.3.5",
-    "sam": "^0.0.7"
+    "aws-sam-local": "^0.0.7"
   },
   "workspaces": [
     "packagex/*"

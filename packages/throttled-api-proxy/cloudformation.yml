@@ -94,11 +94,11 @@ Resources:
           Action:
           - logs:CreateLogGroup
           - logs:CreateLogStream
-          Resource: arn:aws:logs:us-east-1:*:*
-        - Effect: Allow
-          Action:
+          - logs:DescribeLogGroups
+          - logs:DescribeLogStreams
           - logs:PutLogEvents
-          Resource: arn:aws:logs:us-east-1:*:*
+          - logs:GetLogEvents
+          - logs:FilterLogEvents
           Resource: '*'
       Roles:
       - Ref: ApiGatewayCloudWatchRole
@@ -216,7 +216,7 @@ Resources:
        - ApiGatewayCloudWatchRole
        - Arn
 
-  RestApiDevStage:
+  RestApiProdStage:
     Type: 'AWS::ApiGateway::Stage'
     Properties:
       StageName: prod
@@ -236,7 +236,7 @@ Resources:
           MetricsEnabled: 'true'
           DataTraceEnabled: 'true'
           ThrottlingBurstLimit: 999
-          ThrottlingRateLimit: 1
+          ThrottlingRateLimit: 2
           LoggingLevel: INFO
 
 
@@ -287,9 +287,9 @@ Resources:
       RequestParameters: {}
       ResourceId: !Ref ApiGatewayResource
       RestApiId: !Ref RestApi
-      AuthorizationType: NONE
-      # AuthorizerId: !Ref Authorizer
-      ApiKeyRequired: true
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref Authorizer
+      ApiKeyRequired: false
       RequestParameters:
           method.request.path.proxy: true
       MethodResponses:
@@ -297,7 +297,8 @@ Resources:
       Integration:
         IntegrationHttpMethod: GET
         Type: HTTP_PROXY
-        Uri: 'https://87wzh3anoa.execute-api.us-east-1.amazonaws.com/dev/{proxy}' # the URL you want to set a proxy to
+        #Uri: 'https://87wzh3anoa.execute-api.us-east-1.amazonaws.com/dev/{proxy}' # the URL you want to set a proxy to
+        Uri: 'https://api.samanage.com/{proxy}' # the URL you want to set a proxy to
         IntegrationResponses:
           - StatusCode: 200
         RequestParameters:
@@ -415,3 +416,11 @@ Outputs:
         - !Ref Domain
         - '/'
         - !Ref Path
+  ApiGatewayArn:
+    Description: ApiGateway ARN
+    Value: !Ref RestApi
+    #  Fn::GetAtt:
+    #    - RestApi
+    #    - Id
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayId'
