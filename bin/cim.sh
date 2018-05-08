@@ -1,7 +1,7 @@
 #!/bin/bash
 AWS_SDK_LOAD_CONFIG=1
 AWS_REGION=us-east-1
-FUNC="$1"
+FUNC=`basename "$1"`
 DIR_PARAMS="--dir packages/$FUNC"
 ALL_PARAMS="$DIR_PARAMS --profile=samanage-sandbox --debug=yes"
 CIM="../cim/bin/cim"

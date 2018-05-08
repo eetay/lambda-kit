@@ -18,7 +18,7 @@ Resources:
           Type: Api
           Properties:
             Path: /lambda2
-            Method: get
+            Method: GET
       Environment:
         Variables:
           LAMBDA1: !ImportValue lambda1-LambdaFunction

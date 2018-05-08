@@ -43,7 +43,7 @@ asynckit@^0.4.0:
   version "0.4.0"
   resolved "https://registry.yarnpkg.com/asynckit/-/asynckit-0.4.0.tgz#c79ed97f7f34cb8f2ba1bc9790bcc366474b4b79"
 
-aws-sam-local@^0.0.7:
+aws-sam-local@^0.2:
   version "0.2.11"
   resolved "https://registry.yarnpkg.com/aws-sam-local/-/aws-sam-local-0.2.11.tgz#c718e84541430dfff74e0b9ad3a7109bb2b612c4"
   dependencies:
