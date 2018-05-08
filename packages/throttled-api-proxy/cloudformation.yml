@@ -227,19 +227,13 @@ Resources:
         StackName: !Sub '${AWS::StackName}'
         StageName: prod
       MethodSettings:
-        - ResourcePath:
-            Fn::Join:
-              - ''
-              - - '/'
-                - !Ref Path
-          HttpMethod: GET
+        - ResourcePath: '/*'
+          HttpMethod: '*'
           MetricsEnabled: 'true'
           DataTraceEnabled: 'true'
           ThrottlingBurstLimit: 999
           ThrottlingRateLimit: 2
-          LoggingLevel: INFO
-
-
+          LoggingLevel: ERROR
 
   ApiGatewayResource:
     Type: AWS::ApiGateway::Resource
@@ -297,8 +291,8 @@ Resources:
       Integration:
         IntegrationHttpMethod: GET
         Type: HTTP_PROXY
-        #Uri: 'https://87wzh3anoa.execute-api.us-east-1.amazonaws.com/dev/{proxy}' # the URL you want to set a proxy to
-        Uri: 'https://api.samanage.com/{proxy}' # the URL you want to set a proxy to
+        #Uri: 'https://87wzh3anoa.execute-api.us-east-1.amazonaws.com/dev/{proxy}' # aws pet store
+        Uri: 'https://api.samanage.com/{proxy}'
         IntegrationResponses:
           - StatusCode: 200
         RequestParameters:
@@ -309,7 +303,11 @@ Resources:
     Type: AWS::ApiGateway::Deployment
     Properties:
       RestApiId: !Ref RestApi
-      StageName: !Ref Stage # Maps to the custom domain name.  BasePathMapping.Stage
+      StageName: unused
+      StageDescription:
+        Description: "unused: due to a bug in aws api cloudformation we need to create extra stage"
+        MetricsEnabled: 'true' #this affects the prod stage
+        DataTraceEnabled: 'true' #this affects the prod stage
     DependsOn:
       - ApiGatewayProxyAny
       - ApiGatewayMethodOptions
