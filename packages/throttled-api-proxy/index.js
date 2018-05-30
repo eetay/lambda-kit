@@ -7,74 +7,39 @@
 *
 * or in the "license" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 */
-console.log('Loading extra new function');
+console.log('Loading authorizer function');
 var AuthPolicy = require('./src/AuthPolicy.js');
-var jwt = require('jsonwebtoken');
+var Redis = require('ioredis');
 
-/* Output from an Amazon API Gateway Lambda Authorizer
-https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-lambda-authorizer-output.html
---------------------------------
-{
-  "principalId": "yyyyyyyy", // The principal user identification associated with the token sent by the client.
-  "policyDocument": {
-    "Version": "2012-10-17",
-    "Statement": [
-      {
-        "Action": "execute-api:Invoke",
-        "Effect": "Allow|Deny",
-        "Resource": "arn:aws:execute-api:{regionId}:{accountId}:{appId}/{stage}/{httpVerb}/[{resource}/[child-resources]]"
-      }
-    ]
-  },
-  "context": {
-    "stringKey": "value",
-    "numberKey": "1",
-    "booleanKey": "true"
-  },
-  "usageIdentifierKey": "{api-key}"
+const logger = {
+  log: function() {
+    console.log('DEBUG:', ...arguments)
+  }
 }
----------------------------------*/
-const KEYS=[
-  'APuQmrUSup7Eh5JlMm8TQe1yUgwGhZy4eaJEiy0g',
-  'tEy7OuNOzi9QWT8CMh0Mn97Wevmm650R8s6IXKsX'
-]
 
+Redis.Promise.onPossiblyUnhandledRejection(function (error) {
+  // error.command.name is the command name
+  // error.command.args is the command arguments
+  logger.log(error);
+});
+
+function parse_auth_token(authorizationToken) {
+  try {
+    return {
+      token: authorizationToken.split('Bearer')[1].trim(),
+      user: null, //TODO: base64 decode
+      jwt_token: null //TODO
+    }
+  } catch (e) {
+    throw 'Failed to parse authorization token: ' + authorizationToken;
+  }
+}
 const EETAY_USER_ID = '410895836b87a5d6d9e9d35daad82f09d670525333562b85aeb5abbc9335dba9';
 
-function decodeAuthToken(token, success, failure) {
-  try {
-    // token format is "Bearer <something>:<jwt>"
-    jwt_info = jwt.decode(token.split(':')[1]) // unverified info (we don't have the secret)
-    console.log('decoded api gateway authz info: ', jwt_info.api_key_name, jwt_info.api_key_authz)
-    success(jwt_info.api_key_authz);
-    /*
-    apiGateway.getApiKeys(
-      {nameQuery: jwt_info.api_key_name, includeValues: true},
-      function(err, data) {
-        if (err) {
-          console.log(err, err.stack); // an error occurred
-          failure(err);
-        }
-        else {
-          console.log(data.items[0].value);
-          success(data.items[0].value);
-        }
-      }
-    );
-    */
-  }
-  catch (e) {
-    console.log('decodeAuthToken', e);
-    failure(e);
-  }
-}
-
-console.log('Loading extra new function');
-
 exports.handler = function(event, context, callback) {
-    console.log('Event: ' + JSON.stringify(event));
-    console.log('Client token: ' + event.authorizationToken);
-    console.log('Method ARN: ' + event.methodArn);
+    logger.log('Event: ' + JSON.stringify(event));
+    logger.log('Client token: ' + event.authorizationToken);
+    logger.log('Method ARN: ' + event.methodArn);
 
     // you can send a 401 Unauthorized response to the client by failing like so:
     // callback("Unauthorized", null);
@@ -125,16 +90,37 @@ exports.handler = function(event, context, callback) {
     };
     // authResponse.context.arr = ['foo']; <- this is invalid, APIGW will not accept it
     // authResponse.context.obj = {'foo':'bar'}; <- also invalid
-    
-    decodeAuthToken(
-      event.authorizationToken, 
-      function(key) {
-        authResponse.usageIdentifierKey = key;
-        console.log('Responding with: ' + JSON.stringify(authResponse));
-        callback(null, authResponse);
-      }, 
-      function (err) {
-        callback("Unauthorized", null);
-      }
-    );
+
+    var denyAccess = function (err) {
+      logger.log('Responding with: Unauthroized');
+      callback("Unauthorized: " + err, null);
+    }
+
+    var grantAccess = function(auth_info_stringified) {
+      var auth_info = JSON.parse(auth_info_stringified);
+      logger.log(auth_info);
+      authResponse.usageIdentifierKey = auth_info.apikey;
+      logger.log('Responding with:', authResponse);
+      callback(null, authResponse);
+    }
+
+    var redis_address = process.env.SessionCacheHost;
+    logger.log('redis_address: ', redis_address);
+    var redis = new Redis({
+      connectTimeout: 2000,
+      reconnectOnError: function (err) { denyAccess(err); return false; },
+      host: redis_address,
+      port: 6379
+    });
+
+
+    try {
+      if (event.type != 'TOKEN') throw ('Wrong event type: ' + event.type)
+      var token_info = parse_auth_token(event.authorizationToken);
+      logger.log(token_info);
+      redis.get('api_tokens:' + token_info.token).timeout(2000).then(grantAccess).catch(denyAccess);
+    } catch (e) {
+      denyAccess(e);
+    }
+    context.callbackWaitsForEmptyEventLoop = false
 };

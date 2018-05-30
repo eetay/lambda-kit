@@ -1,5 +1,6 @@
 #!/bin/bash
 AWS_SDK_LOAD_CONFIG=1
+HOST_IP=`ifconfig | grep 192.168.1 | head -1 | sed 's/ net.*$//;s/^.* 192/192/'`
 AWS_REGION=us-east-1
 FUNC=`basename "$1"`
 DIR_PARAMS="--dir packages/$FUNC"

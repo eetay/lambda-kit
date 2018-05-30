@@ -7,7 +7,7 @@ Parameters:
         Type: String
 
 Resources:
-  lambda2:
+  throttled-api-proxy:
     Type: AWS::Serverless::Function
     Properties:
       Runtime: nodejs6.10
@@ -21,6 +21,7 @@ Resources:
             Method: GET
       Environment:
         Variables:
+          SessionCacheHost: 192.168.99.1
           LAMBDA1: !ImportValue lambda1-LambdaFunction
 
 

@@ -24,7 +24,35 @@ Conditions:
     - !Not [!Equals [!Ref Domain, '']]
 
 Resources:
+  SessionCacheSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Lock cache down to webserver access only"
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: 6379
+          ToPort: 6379
+          CidrIp: 0.0.0.0/0
 
+  SessionCache:
+    Type: AWS::ElastiCache::ReplicationGroup
+    Properties:
+      PreferredCacheClusterAZs:
+      - us-east-1a
+      AutomaticFailoverEnabled: false
+      AutoMinorVersionUpgrade: true
+      CacheNodeType: 'cache.t2.micro'
+      Engine: 'redis'
+      EngineVersion: '3.2.6'
+      NumCacheClusters: 1
+      AtRestEncryptionEnabled: true
+      TransitEncryptionEnabled: false
+      ReplicationGroupDescription: 'Session Cache redis cluster'
+      SecurityGroupIds:
+        - Fn::GetAtt:
+          - SessionCacheSecurityGroup
+          - GroupId
+  
   #
   # Role that our API Gateway will assume to write logs
   #
@@ -55,11 +83,9 @@ Resources:
         - Effect: Allow
           Action:
           - lambda:InvokeFunction
-          Resource: "*"
+          Resource: '*'
       Roles:
       - Ref: ApiGatewayExecuteAuthorizerRole
-
-
 
   #
   # Role that our API Gateway will assume to write logs
@@ -103,7 +129,7 @@ Resources:
       Roles:
       - Ref: ApiGatewayCloudWatchRole
 
-  
+
   #
   # Role that our Lambda will assume to provide access to other AWS resources
   #
@@ -123,6 +149,7 @@ Resources:
 
   #
   # Create a Policy and attach it to our Lambda Role.
+  # Note: 'ec2:*' is required for VpcConfig
   #
   IamPolicyLambdaExecution:
     Type: AWS::IAM::Policy
@@ -135,11 +162,14 @@ Resources:
           Action:
           - logs:CreateLogGroup
           - logs:CreateLogStream
+          - logs:PutLogEvents
+          - ec2:CreateNetworkInterface
+          - ec2:DescribeNetworkInterfaces
+          - ec2:DeleteNetworkInterface
           Resource: arn:aws:logs:us-east-1:*:*
         - Effect: Allow
           Action:
-          - logs:PutLogEvents
-          Resource: arn:aws:logs:us-east-1:*:*
+          - 'elasticache:*'
           Resource: '*'
       Roles:
       - Ref: IamRoleLambdaExecution
@@ -147,11 +177,16 @@ Resources:
   #
   # Our Lambda function.  Basic code has been added.  You will replace the code later via your Github repo.
   #
-  LambdaFunction:
+  AuthorizerLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
       Handler: index.handler
       Timeout: 5
+      VpcConfig:
+        SecurityGroupIds:
+          - String
+        SubnetIds:
+          - String
       Role:
         Fn::GetAtt:
           - IamRoleLambdaExecution
@@ -172,6 +207,9 @@ Resources:
               callback(null, response);
           };
       Runtime: nodejs6.10
+      Environment:
+        Variables:
+          SessionCacheHost: !GetAtt SessionCache.PrimaryEndPoint.Address
 
   #
   # Create the API Gateway
@@ -199,7 +237,7 @@ Resources:
             - Ref: "AWS::Region"
             - ":lambda:path/2015-03-31/functions/"
             - Fn::GetAtt:
-                - "LambdaFunction"
+                - "AuthorizerLambdaFunction"
                 - "Arn"
             - "/invocations"
       Type: "TOKEN"
@@ -207,6 +245,7 @@ Resources:
       Name: "DefaultAuthorizer"
       RestApiId:
         Ref: "RestApi"
+
 
   ApiGatewayAccount:
     Type: "AWS::ApiGateway::Account"
@@ -315,11 +354,29 @@ Resources:
   #
   # We need to give API Gateway permission to invoke our Lambda function.
   #
+  DefaultUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      ApiStages:
+      - ApiId: !Ref RestApi
+        Stage: !Ref RestApiProdStage
+      Description: Customer ABC's usage plan
+      Quota:
+        Limit: 50000
+        Period: MONTH
+      Throttle:
+        BurstLimit: 200
+        RateLimit: 10
+      UsagePlanName: DefaultUsagePlan
+
+  #
+  # We need to give API Gateway permission to invoke our Lambda function.
+  #
   PermissionForAPIGatewayToInvokeLambda:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:invokeFunction
-      FunctionName: !Ref LambdaFunction
+      FunctionName: !Ref AuthorizerLambdaFunction
       Principal: apigateway.amazonaws.com
       SourceArn:
         Fn::Join:
@@ -386,11 +443,11 @@ Resources:
             DNSName: !GetAtt ApiDomainName.DistributionDomainName
 
 Outputs:
-  LambdaFunction:
+  AuthorizerLambdaFunction:
     Description: Lambda Function
-    Value: !Ref LambdaFunction
+    Value: !Ref AuthorizerLambdaFunction
     Export:
-      Name: !Sub '${AWS::StackName}-LambdaFunction'
+      Name: !Sub '${AWS::StackName}-AuthorizerLambdaFunction'
   ApiGatewayUrl:
     Description: URL of your API endpoint
     Value: !Join
@@ -422,3 +479,25 @@ Outputs:
     #    - Id
     Export:
       Name: !Sub '${AWS::StackName}-ApiGatewayId'
+  SessionCachePrimaryAddress:
+    Description: 'The DNS address of the primary read-write cache node.'
+    Value: !GetAtt SessionCache.PrimaryEndPoint.Address
+    Export:
+      Name: !Sub '${AWS::StackName}-SessionCachePrimaryAddress'
+  SessionCachePrimaryPort:
+    Description: 'The number of the port that the primary read-write cache engine is listening on.'
+    Value: !GetAtt SessionCache.PrimaryEndPoint.Port
+    Export:
+      Name: !Sub '${AWS::StackName}-SessionCachePrimaryPort'
+  SessionCacheSecondaryAddresses:
+    Description: 'A string with a list of endpoints for the read-only replicas.'
+    Value: !GetAtt SessionCache.ReadEndPoint.Addresses
+    Export:
+      Name: !Sub '${AWS::StackName}-SessionCacheSecondaryAddresses'
+  SessionCacheSecondaryPorts:
+    Description: 'A string with a list of ports for the read-only replicas. '
+    Value: !GetAtt SessionCache.ReadEndPoint.Ports
+    Export:
+      Name: !Sub '${AWS::StackName}-SessionCacheSecondaryPorts'
+
+
