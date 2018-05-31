@@ -14,8 +14,9 @@ stack:
 #
 # Define stack input parameters.
 #
-#  parameters:
-#    VpcStackName: '${stack.parents.vpc.stack.name}'
+  parameters:
+    DefaultVpc: '${env.AWS_DEFAULT_VPC}'
+    DefaultVpcSubnets: '${env.AWS_DEFAULT_VPC_SUBNETS}'
 
 #
 # Define stack capabilities required.

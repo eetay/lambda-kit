@@ -17,6 +17,13 @@ Parameters:
     Type: String
     Description: The deployment stage used by API Gateway
     Default: 'dev'
+  DefaultVpc:
+    Type: String
+    Description: default VPC id
+  DefaultVpcSubnets:
+    Type: String
+    Description: Subnets available in default VPC
+    Default: 'subnet-2b9c6461,subnet-b10a3eec'
 
 Conditions:
   UseCustomDomain: !And
@@ -166,7 +173,8 @@ Resources:
           - ec2:CreateNetworkInterface
           - ec2:DescribeNetworkInterfaces
           - ec2:DeleteNetworkInterface
-          Resource: arn:aws:logs:us-east-1:*:*
+          - ec2:DetachNetworkInterface
+          Resource: '*'
         - Effect: Allow
           Action:
           - 'elasticache:*'
@@ -178,15 +186,20 @@ Resources:
   # Our Lambda function.  Basic code has been added.  You will replace the code later via your Github repo.
   #
   AuthorizerLambdaFunction:
+    DependsOn: SessionCacheSecurityGroup
     Type: AWS::Lambda::Function
     Properties:
       Handler: index.handler
       Timeout: 5
       VpcConfig:
         SecurityGroupIds:
-          - String
+        - Fn::GetAtt:
+          - SessionCacheSecurityGroup
+          - GroupId
         SubnetIds:
-          - String
+          Fn::Split:
+            - ","
+            - !Ref DefaultVpcSubnets
       Role:
         Fn::GetAtt:
           - IamRoleLambdaExecution
