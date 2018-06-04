@@ -20,8 +20,8 @@ const logger = {
 Redis.Promise.onPossiblyUnhandledRejection(function (error) {
   // error.command.name is the command name
   // error.command.args is the command arguments
-  logger.log(error);
-});
+  logger.log(error)
+})
 
 function parse_auth_token(authorizationToken) {
   try {
@@ -31,12 +31,13 @@ function parse_auth_token(authorizationToken) {
       jwt_token: null //TODO
     }
   } catch (e) {
-    throw 'Failed to parse authorization token: ' + authorizationToken;
+    throw 'Failed to parse authorization token: ' + authorizationToken
   }
 }
 const EETAY_USER_ID = '410895836b87a5d6d9e9d35daad82f09d670525333562b85aeb5abbc9335dba9';
 
 exports.handler = function(event, context, callback) {
+    context.callbackWaitsForEmptyEventLoop = false
     logger.log('Event: ' + JSON.stringify(event));
     logger.log('Client token: ' + event.authorizationToken);
     logger.log('Method ARN: ' + event.methodArn);
@@ -52,17 +53,17 @@ exports.handler = function(event, context, callback) {
     var principalId = 'user|'+ EETAY_USER_ID;
 
     // build apiOptions for the AuthPolicy
-    var apiOptions = {};
-    var tmp = event.methodArn.split(':');
-    var apiGatewayArnTmp = tmp[5].split('/');
-    var awsAccountId = tmp[4];
-    apiOptions.region = tmp[3];
-    apiOptions.restApiId = apiGatewayArnTmp[0];
-    apiOptions.stage = apiGatewayArnTmp[1];
-    var method = apiGatewayArnTmp[2];
-    var resource = '/'; // root resource
+    var apiOptions = {}
+    var tmp = event.methodArn.split(':')
+    var apiGatewayArnTmp = tmp[5].split('/')
+    var awsAccountId = tmp[4]
+    apiOptions.region = tmp[3]
+    apiOptions.restApiId = apiGatewayArnTmp[0]
+    apiOptions.stage = apiGatewayArnTmp[1]
+    var method = apiGatewayArnTmp[2]
+    var resource = '/' // root resource
     if (apiGatewayArnTmp[3]) {
-        resource += apiGatewayArnTmp.slice(3, apiGatewayArnTmp.length).join('/');
+        resource += apiGatewayArnTmp.slice(3, apiGatewayArnTmp.length).join('/')
     }
 
     // this function must generate a policy that is associated with the recognized principal user identifier.
@@ -73,12 +74,12 @@ exports.handler = function(event, context, callback) {
     // made with the same token
 
     // the example policy below denies access to all resources in the RestApi
-    var policy = new AuthPolicy(principalId, awsAccountId, apiOptions);
-    policy.allowAllMethods();
+    var policy = new AuthPolicy(principalId, awsAccountId, apiOptions)
+    policy.allowAllMethods()
     // policy.allowMethod(AuthPolicy.HttpVerb.GET, "/users/username");
 
     // finally, build the policy
-    var authResponse = policy.build();
+    var authResponse = policy.build()
 
     // new! -- add additional key-value pairs
     // these are made available by APIGW like so: $context.authorizer.<key>
@@ -93,7 +94,8 @@ exports.handler = function(event, context, callback) {
 
     var denyAccess = function (err) {
       logger.log('Responding with: Unauthroized');
-      callback("Unauthorized: " + err, null);
+      callback("Unauthorized: " + err, null)
+      return false
     }
 
     var grantAccess = function(auth_info_stringified) {
@@ -101,11 +103,12 @@ exports.handler = function(event, context, callback) {
       logger.log(auth_info);
       authResponse.usageIdentifierKey = auth_info.apikey;
       logger.log('Responding with:', authResponse);
-      callback(null, authResponse);
+      callback(null, authResponse)
+      return false
     }
 
-    var redis_address = process.env.SessionCacheHost;
-    logger.log('redis_address: ', redis_address);
+    var redis_address = process.env.SessionCacheHost
+    logger.log('redis_address: ', redis_address)
     var redis = new Redis({
       connectTimeout: 2000,
       reconnectOnError: function (err) { denyAccess(err); return false; },
@@ -116,11 +119,10 @@ exports.handler = function(event, context, callback) {
 
     try {
       if (event.type != 'TOKEN') throw ('Wrong event type: ' + event.type)
-      var token_info = parse_auth_token(event.authorizationToken);
+      var token_info = parse_auth_token(event.authorizationToken)
       logger.log(token_info);
-      redis.get('api_tokens:' + token_info.token).timeout(2000).then(grantAccess).catch(denyAccess);
+      redis.get('api_tokens:' + token_info.token).timeout(2000).then(grantAccess).catch(denyAccess)
     } catch (e) {
-      denyAccess(e);
+      denyAccess(e)
     }
-    context.callbackWaitsForEmptyEventLoop = false
-};
+}
